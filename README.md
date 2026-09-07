@@ -9,9 +9,11 @@ Two icons appear on enemy ship markers:
 |---|---|
 | **amber shell pointing out** | your main battery overmatches that ship's bow plating |
 | **red shell pointing in** | that ship's main battery overmatches *your* bow plating |
+| **grey question mark** | an armour value is missing, so neither answer is knowable |
 
-Both are 18 px and sit next to each other in the marker's status-icon row, so the pair reads as
-one indicator with two directions.
+All three are 18 px and sit next to each other in the marker's status-icon row, so they read as
+one indicator. The question mark can appear alongside either arrow: "I overmatch them, and
+whether they overmatch me is unknown" is a real state.
 
 Neither icon depends on the shell you have loaded. Both report what a main battery *can* do, so
 switching to HE or SAP changes nothing on screen. Read the amber icon as "my guns can overmatch
@@ -24,7 +26,8 @@ Replace the three images below. Suggested shots:
   1. overmatch.png  - an enemy marker showing only the amber icon
   2. threat.png     - an enemy marker showing only the red icon
   3. both.png       - a marker showing both, ideally Yamato vs Yamato
-Optionally a fourth with BOWOM_DEBUG_TEXT enabled, showing the numeric readout.
+  4. unknown.png    - a marker showing the grey question mark, if you can find an untabled ship
+Optionally a fifth with BOWOM_DEBUG_TEXT enabled, showing the numeric readout.
 -->
 
 **You can overmatch them**
@@ -70,8 +73,8 @@ decides whether bow-tanking works, and it is the thing this mod surfaces.
 
 - World of Warships, PC client.
 - Built and tested against **game version 15.7.0**, client build `13015811`.
-- Uses only the official Wargaming Mods API (`API_v1.0`). No DLL injection, no memory reading,
-  no patched game files.
+- Pure UI layer: two `.unbound` files and three PNGs. No Python component, no DLL injection,
+  no memory reading, no patched or replaced game files.
 
 ## Installation
 
@@ -87,9 +90,9 @@ decides whether bow-tanking works, and it is the thing this mod surfaces.
    directory structure. You should end up with:
 
    ```
-   res_mods\PnFMods\BowOvermatch\Main.py
    res_mods\PnFMods\BowOvermatch\icon_overmatch.png
    res_mods\PnFMods\BowOvermatch\icon_threat.png
+   res_mods\PnFMods\BowOvermatch\icon_unknown.png
    res_mods\gui\unbound2\PnFMods\BowOvermatch.unbound
    res_mods\gui\unbound2\PnFMods\BowOvermatchTable.unbound
    ```
@@ -107,14 +110,14 @@ Adjust both paths for your install.
 
 ### Verifying it loaded
 
-Open `World_of_Warships\profile\python.log` and search for `BowOvermatch`. You want:
+The mod has no Python component, so it writes nothing to `python.log`. Verify it visually
+instead: open a training room, add an enemy battleship, and look for the icons. Setting
+`BOWOM_DEBUG_TEXT` to `true` makes this quicker — it prints the numbers next to every enemy
+marker whether or not an icon is showing, so you can tell "loaded and correctly silent" apart
+from "not loaded".
 
-```
-ModsAPI, BowOvermatch, ('created an instance',)
-```
-
-If that line is absent, the Python half did not load and nothing else will work — check the file
-landed at `res_mods\PnFMods\BowOvermatch\Main.py` exactly.
+If nothing appears at all, the likely causes are a file that did not land in the right place, or
+another mod that also redefines `EntityStatesItem` — see [Compatibility](#compatibility).
 
 ### Uninstalling
 
@@ -137,10 +140,7 @@ All in `res_mods/gui/unbound2/PnFMods/BowOvermatch.unbound`, at the top of the f
 `BOWOM_DEBUG_TEXT` is the tool for checking the mod against a wiki value: it shows the numbers
 behind both decisions, so a missing icon can always be traced to the arithmetic.
 
-`Main.py` also has a `DEBUG` flag that logs every shell change and the published threshold to
-`python.log`. With it on you will see the threshold recomputed on ammunition switches and land
-on the same number every time — calibre does not change mid-battle, which is why the icons do
-not either.
+`BOWOM_RATIO` is exposed because 14.3 is a game balance constant, not a law of physics.
 
 ### Using the naval gun icon instead
 
@@ -176,17 +176,23 @@ If the mod stops working after a modpack update, this is the first thing to chec
 
 ## How it works
 
-Four inputs, three of them live:
+Four inputs, two live and two from a static table:
 
 | Input | Source |
 |---|---|
-| your calibre | Python, from the selected artillery shell (`ammo.bulletDiametr`) |
-| their bow armour | the static `BOW_ARMOUR` table, keyed on the marker's `nameIDS` |
-| your bow armour | the same table, keyed on your own avatar's `nameIDS` |
-| their calibre | live from `CC.mods_ShipParamsInBattle`, a first-party component the client provides for battle mods |
+| your calibre | live from `CC.mods_ShipParamsInBattle`, keyed on your own avatar id |
+| their calibre | live from `CC.mods_ShipParamsInBattle`, keyed on the marker's avatar id |
+| your bow armour | the static `BOW_ARMOUR` table, keyed on your own avatar's `nameIDS` |
+| their bow armour | the same table, keyed on the marker's `nameIDS` |
 
-Enemy gun calibres need no table. `Mods_ShipParamsInBattle` carries a full `shipTTX` for every
-ship in the battle, including `artillery.mainGun[0].caliber.value` in millimetres.
+Gun calibres need no table at all, yours included. `Mods_ShipParamsInBattle` carries a full
+`shipTTX` for every ship in the battle, including `artillery.mainGun[0].caliber.value` in
+millimetres, keyed by avatar id. Your own avatar id comes from
+`$datahub.getSingleEntity(CC.playerAvatar).avatar.id`.
+
+Armour is the only thing that needs a table, because the client does not expose per-plate armour
+anywhere. The port's technical spec panel shows only a whole-ship minimum and maximum, and the
+in-port armour inspector is keyed by material id with no notion of "bow".
 
 ### No dependency on other mods
 
@@ -208,23 +214,26 @@ Several other published mods use the same component and the same call — among 
 issues the call itself. Firing it more than once is harmless; the component is keyed by
 `avatarId`.
 
-Armour is the only thing that needs a table, because the client does not expose per-plate armour
-anywhere. The port's technical spec panel shows only a whole-ship minimum and maximum, and the
-in-port armour inspector is keyed by material id with no notion of "bow".
+There is no Python component. An earlier version read your calibre through the Mods API
+(`battle.getSelectedAmmoId` → `getAmmoParams` → `bulletDiametr`) and published it to the datahub
+for the unbound layer to pick up. Once neither direction depended on the loaded shell, that was
+a slower route to a number already sitting in the TTX component, so it went. `ConsumablesMonitor2`,
+`SmokeMarker` and `BuildViewer` are all unbound-only mods, so this is a normal shape.
 
-Both comparisons happen in the unbound layer rather than in Python. The Python `Ship` object
-exposes no ship index or id — only a localised display name — so it cannot identify a ship well
-enough to look one up. The marker entity can, via `avatar.ship.ref.ship.nameIDS`.
+The comparisons have to happen in the unbound layer regardless: the Mods API's Python `Ship`
+object exposes no ship index or id — only a localised display name — so it cannot identify a
+ship well enough to look one up in the armour table. The marker entity can, via
+`avatar.ship.ref.ship.nameIDS`.
 
 ```
 res_mods/
   PnFMods/BowOvermatch/
-    Main.py                    publishes {overmatchMm} for your own guns
     icon_overmatch.png         amber, outgoing
     icon_threat.png            red, incoming
+    icon_unknown.png           grey, armour value missing
     icon_threat_gun.png        alternative artwork, not used by default
   gui/unbound2/PnFMods/
-    BowOvermatch.unbound       the hook, both comparisons, both icons
+    BowOvermatch.unbound       the hook, both comparisons, both icons - all the logic
     BowOvermatchTable.unbound  generated armour table, 844 ships
 tools/
   gen_bow_armour_table.py      DataEnum.py -> BowOvermatchTable.unbound
@@ -271,7 +280,10 @@ byte, so ship names in the generated comments are transliterated (`Republique`, 
 `Zao`). A stray UTF-8 byte risks the file failing to parse, which would leave `BOW_ARMOUR`
 undefined and the mod silently dead.
 
-Ships missing from the table simply show no icon, which is the correct failure mode.
+Ships missing from the table show the grey question mark rather than nothing. A silent absence
+would be indistinguishable from "no, you cannot overmatch that bow", which is a different and
+misleading answer. So if you see question marks, that ship needs a table row — and it is worth
+opening an issue so the dataset gets it.
 
 ## Known limitations
 
@@ -298,12 +310,20 @@ Ships missing from the table simply show no icon, which is the correct failure m
 - **Bow plating is one number per ship here.** Real hulls have an icebreaker plate, upper bow
   plating and a bow deck at different thicknesses. The table uses the bow plating value, which
   is the one that matters for bow-on engagements.
-- **New ships need a table row** until the table is regenerated.
-- **The `createParamsForAllShipsInBattle` action is undocumented.** It is what populates the
-  enemy specification data, and it is not in Wargaming's published Mods API documentation. The
-  component it fills is first-party and several mods rely on the action, so it is unlikely to
-  vanish quietly, but it is not a contract. If the red icon never appears, that call is the
-  first suspect.
+- **New ships need a table row** until the table is regenerated. They show the grey question
+  mark in the meantime, so this is visible rather than silent.
+- **The question mark covers missing armour only, not missing calibre.** A calibre of zero means
+  either a ship with no main battery, which genuinely cannot overmatch anything, or a
+  specification collection that has not populated yet, which resolves a moment into the battle.
+  Neither deserves a question mark on every marker.
+- **The `createParamsForAllShipsInBattle` action is undocumented, and both icons now depend on
+  it.** It populates the ship specification data that supplies every calibre in the mod, yours
+  and theirs, and it is not in Wargaming's published Mods API documentation. This is the cost of
+  the mod having no Python component: there is a single point of failure where there used to be
+  two independent data paths, so if that action ever stops working the whole mod goes quiet
+  rather than half of it. The component it fills is first-party and at least six other mods rely
+  on the same action, so it is unlikely to vanish silently, but it is not a contract. If no
+  icons appear at all, that call is the first suspect.
 
 ## Game client modification policy
 
