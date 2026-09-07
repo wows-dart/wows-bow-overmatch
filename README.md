@@ -7,9 +7,9 @@ Three icons can appear on an enemy ship marker:
 
 | Icon | Meaning |
 |---|---|
-| **amber shell pointing out** | your main battery overmatches that ship's bow plating |
-| **red shell pointing in** | that ship's main battery overmatches *your* bow plating |
-| **grey question mark** | an armour value is missing, so neither answer is knowable |
+| ![amber shell pointing out](https://github.com/wows-dart/wows-bow-overmatch/blob/master/res_mods/PnFMods/BowOvermatch/icon_overmatch.png) | your main battery overmatches that ship's bow plating |
+| ![red shell pointing in](https://github.com/wows-dart/wows-bow-overmatch/blob/master/res_mods/PnFMods/BowOvermatch/icon_threat.png) | that ship's main battery overmatches *your* bow plating |
+| ![**grey question mark**](https://github.com/wows-dart/wows-bow-overmatch/blob/master/res_mods/PnFMods/BowOvermatch/icon_unknown.png) | an armour value is missing, so neither answer is knowable |
 
 All three are 18 px and sit next to each other in the marker's status-icon row, so they read as
 one indicator. The question mark can appear alongside either arrow: "I overmatch them, and
