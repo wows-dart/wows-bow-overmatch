@@ -3,7 +3,7 @@
 A World of Warships mod that answers the AP overmatch question in both directions, on the ship
 markers, without you having to remember armour values.
 
-Two icons appear on enemy ship markers:
+Three icons can appear on an enemy ship marker:
 
 | Icon | Meaning |
 |---|---|
@@ -15,19 +15,19 @@ All three are 18 px and sit next to each other in the marker's status-icon row, 
 one indicator. The question mark can appear alongside either arrow: "I overmatch them, and
 whether they overmatch me is unknown" is a real state.
 
-Neither icon depends on the shell you have loaded. Both report what a main battery *can* do, so
+Neither arrow depends on the shell you have loaded. Both report what a main battery *can* do, so
 switching to HE or SAP changes nothing on screen. Read the amber icon as "my guns can overmatch
 that bow", not "this salvo will".
 
 ## Screenshots
 
 <!--
-Replace the three images below. Suggested shots:
+Replace the images below. Suggested shots:
   1. overmatch.png  - an enemy marker showing only the amber icon
   2. threat.png     - an enemy marker showing only the red icon
   3. both.png       - a marker showing both, ideally Yamato vs Yamato
-  4. unknown.png    - a marker showing the grey question mark, if you can find an untabled ship
-Optionally a fifth with BOWOM_DEBUG_TEXT enabled, showing the numeric readout.
+Optional extras, if you can get them: a marker showing the grey question mark, and one with
+BOWOM_DEBUG_TEXT enabled showing the numeric readout.
 -->
 
 **You can overmatch them**
@@ -73,8 +73,8 @@ decides whether bow-tanking works, and it is the thing this mod surfaces.
 
 - World of Warships, PC client.
 - Built and tested against **game version 15.7.0**, client build `13015811`.
-- Pure UI layer: two `.unbound` files and three PNGs. No Python component, no DLL injection,
-  no memory reading, no patched or replaced game files.
+- Pure UI layer: declarative `.unbound` markup and PNG images. No Python component, no DLL
+  injection, no memory reading, no patched or replaced game files.
 
 ## Installation
 
@@ -133,7 +133,7 @@ All in `res_mods/gui/unbound2/PnFMods/BowOvermatch.unbound`, at the top of the f
 
 | Constant | Default | Effect |
 |---|---|---|
-| `BOWOM_ICON_SIZE` | `18` | displayed size of both icons, in px |
+| `BOWOM_ICON_SIZE` | `18` | displayed size of all three icons, in px |
 | `BOWOM_DEBUG_TEXT` | `false` | set `true` to print `<my threshold>/<their bow> v <their threshold>/<my bow>` next to every enemy marker |
 | `BOWOM_RATIO` | `14.3` | the overmatch ratio, in case Wargaming ever changes it |
 
@@ -141,13 +141,6 @@ All in `res_mods/gui/unbound2/PnFMods/BowOvermatch.unbound`, at the top of the f
 behind both decisions, so a missing icon can always be traced to the arithmetic.
 
 `BOWOM_RATIO` is exposed because 14.3 is a game balance constant, not a law of physics.
-
-### Using the naval gun icon instead
-
-`icon_threat_gun.png` is an alternative for the red icon, drawn as a side-view naval gun. It
-needs roughly 26 px to read — below that the barrel and turret merge and it looks like a hammer.
-To use it, point `BowOvermatchThreatIcon` at that filename and raise `BOWOM_ICON_SIZE`, keeping
-in mind that constant sizes both icons.
 
 ## Compatibility
 
@@ -231,18 +224,14 @@ res_mods/
     icon_overmatch.png         amber, outgoing
     icon_threat.png            red, incoming
     icon_unknown.png           grey, armour value missing
-    icon_threat_gun.png        alternative artwork, not used by default
   gui/unbound2/PnFMods/
-    BowOvermatch.unbound       the hook, both comparisons, both icons - all the logic
-    BowOvermatchTable.unbound  generated armour table, 844 ships
-tools/
-  gen_bow_armour_table.py      DataEnum.py -> BowOvermatchTable.unbound
-  make_icon.py                 -> the icon PNGs
+    BowOvermatch.unbound       the hook, both comparisons, the icons - all the logic
+    BowOvermatchTable.unbound  armour table, 844 ships
 ```
 
 ## Updating the armour table
 
-`BowOvermatchTable.unbound` is generated, not hand-written. It currently holds **844 ships**:
+`BowOvermatchTable.unbound` holds **844 ships**:
 
 | Bow plating | Ships | | Bow plating | Ships |
 |---|---|---|---|---|
@@ -252,33 +241,32 @@ tools/
 | 16 mm | 156 | | 27 mm | 50 |
 | 19 mm | 189 | | 32 mm | 139 |
 
-To regenerate after new ships are released, edit the source armour data and run:
+When a new ship is released it will show the grey question mark until the table gains a row.
+Adding one by hand is a single line:
 
 ```
-python tools/gen_bow_armour_table.py
+	'IDS_PJSB018': 32,	# Yamato (EnumX)
 ```
 
-The generator reads a `DataEnum.py` armour dataset and validates every ship index against the
-client's own English text catalogue (`res/texts/en/LC_MESSAGES/global.mo`), which maps
-`IDS_<index>` to ship name and is therefore the authority on whether an index is real and which
-ship it belongs to. Paths are set at the top of the script.
+The key is `IDS_` followed by the ship's index — the internal identifier, not its display name.
+Every ship's index is in the client's own English text catalogue at
+`res/texts/en/LC_MESSAGES/global.mo`, which maps `IDS_<index>` to the ship's name and is the
+authority on whether an index is real and which ship owns it. Indices look like `PJSB018` or
+`PASC004`: `P`, a nation code, `S`, a type letter (`A` carrier, `B` battleship, `C` cruiser,
+`D` destroyer), then three digits.
 
-Corrections live in three tables at the top of the generator — `REINDEX`, `OVERRIDE_BOW` and
-`DROP` — keyed by `(line number, index as written)` so a fix cannot land on the wrong row. The
-source dataset is never modified.
+Three constraints when editing the file:
 
-The generator refuses to write anything if any of these fail:
+- **The value is bow plating in millimetres**, a positive integer. Zero would read as "not in
+  the table" and produce a question mark.
+- **One row per index.** A duplicate key silently overwrites, which is how the source dataset
+  managed to hide three ships behind other ships' indices.
+- **Keep the file pure ASCII.** Not one of the client's own `.unbound` files contains a single
+  non-ASCII byte, which is why ship names in the comments are transliterated (`Republique`,
+  `Cordoba`, `Zao`). A stray UTF-8 byte risks the file failing to parse, which would leave
+  `BOW_ARMOUR` undefined and the whole mod silently dead.
 
-- an index is not in the client catalogue
-- two rows claim the same index
-- a bow value is not a positive integer
-- a correction no longer matches a row, which means the source data changed underneath it
-- the output is not pure ASCII
-
-That last one matters: not one of the client's own `.unbound` files contains a single non-ASCII
-byte, so ship names in the generated comments are transliterated (`Republique`, `Cordoba`,
-`Zao`). A stray UTF-8 byte risks the file failing to parse, which would leave `BOW_ARMOUR`
-undefined and the mod silently dead.
+Opening an issue with the ship name and its bow plating is just as welcome.
 
 Ships missing from the table show the grey question mark rather than nothing. A silent absence
 would be indistinguishable from "no, you cannot overmatch that bow", which is a different and
@@ -316,7 +304,7 @@ opening an issue so the dataset gets it.
   either a ship with no main battery, which genuinely cannot overmatch anything, or a
   specification collection that has not populated yet, which resolves a moment into the battle.
   Neither deserves a question mark on every marker.
-- **The `createParamsForAllShipsInBattle` action is undocumented, and both icons now depend on
+- **The `createParamsForAllShipsInBattle` action is undocumented, and both arrows depend on
   it.** It populates the ship specification data that supplies every calibre in the mod, yours
   and theirs, and it is not in Wargaming's published Mods API documentation. This is the cost of
   the mod having no Python component: there is a single point of failure where there used to be
