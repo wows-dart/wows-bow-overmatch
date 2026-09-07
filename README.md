@@ -32,15 +32,18 @@ BOWOM_DEBUG_TEXT enabled showing the numeric readout.
 
 **You can overmatch them**
 
-![Amber icon on an enemy marker](docs/overmatch.png)
+<img width="251" height="148" alt="image" src="https://github.com/user-attachments/assets/a43c5a98-f0e1-49fe-a640-c6bf9787c439" />
+
 
 **They can overmatch you**
 
-![Red icon on an enemy marker](docs/threat.png)
+<img width="350" height="192" alt="image" src="https://github.com/user-attachments/assets/e82505bf-6979-4209-abde-eab06dfd6734" />
+
 
 **Both directions at once**
 
-![Both icons on one marker](docs/both.png)
+<img width="236" height="143" alt="image" src="https://github.com/user-attachments/assets/0265a302-5d80-49eb-93fc-1c59c6fccd70" />
+
 
 ## The mechanic
 
