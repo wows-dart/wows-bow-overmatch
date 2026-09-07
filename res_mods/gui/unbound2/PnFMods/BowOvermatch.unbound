@@ -1,0 +1,232 @@
+# Bow Overmatch Indicator
+#
+# Two icons on every visible enemy ship marker, one per direction of the overmatch question.
+#
+#   amber shell, pointing out   MY main battery overmatches THEIR bow
+#   red shell,   pointing in    THEIR main battery overmatches MY bow
+#
+# Neither depends on the shell that happens to be loaded. Both report what a main battery can
+# do, so switching to HE or SAP changes nothing on screen.
+#
+# Files:
+#   PnFMods/BowOvermatch/Main.py   publishes {overmatchMm} for the player's own guns
+#   BowOvermatchTable.unbound      generated BOW_ARMOUR, keyed on the full nameIDS string
+#   PnFMods/BowOvermatch/*.png     the two icons
+#
+# Where each input comes from:
+#   my calibre      Python, from the selected artillery shell. Needs the ammo API.
+#   their bow       BOW_ARMOUR, keyed on the marker's nameIDS.
+#   my bow          BOW_ARMOUR, keyed on the player avatar's nameIDS.
+#   their calibre   live from CC.mods_ShipParamsInBattle. No table needed.
+#
+# Both comparisons happen here rather than in Python because ship identity is only reachable
+# from the marker entity, never from the Python Ship object.
+#
+# Hook: this redefines the game's EntityStatesItem. The stock definition is at
+# gui/unbound2/pc/battle/markers/markers_elements.unbound:413 and is instantiated on every ship
+# marker by ship_marker.unbound:448 with no visibility gate. The stock body below is copied
+# verbatim - if it is dropped, every player loses their status icons (heal, spotted, and so on).
+#
+# Conflict warning: only one mod can define EntityStatesItem. Nothing in this res_mods claimed
+# it as of build 13015811. If a modpack update claims it, merge into that mod's definition or
+# move to another free marker element - DistanceItem, TargetAnimationItem, PlayerNameItem,
+# FlagshipItem, RepairShipItem, ScenarioTagItem and SubmarineDepthItem all take _markerEntity.
+
+# Must match COMPONENT_ID in Main.py
+(def constant BOWOM_COMPONENT_KEY 'modBowOvermatch')
+
+# Displayed icon size in px, shared by both icons so the pair reads as a pair. Tune to taste.
+(def constant BOWOM_ICON_SIZE 18)
+
+# Overmatch ratio. Python computes the player's own threshold; this is for the incoming
+# direction, which is calculated entirely in unbound.
+(def constant BOWOM_RATIO 14.3)
+
+# Set true to render "<threshold>/<bow>" next to the icon. For verifying the table against the
+# wiki in a training room. Leave false for normal play.
+(def constant BOWOM_DEBUG_TEXT false)
+
+
+(def element EntityStatesItem (_markerEntity:gfx) layout=true
+	(scope
+		# ---- stock body, verbatim from markers_elements.unbound:413 ----
+		(var statesCollection:gfx = "$datahub.getCollection(CC.state)")
+		(var entityStates:gfx = "statesCollection.getChildByPath('byEntity.' + _markerEntity.id + '.marker.sorted')" (event "statesCollection.evChildAdded"))
+	)
+
+	(style
+		(width = 0) (height = 100%)
+		(align = "right|middle")
+	)
+
+	(hblock
+		# ---- stock: the status icon row ----
+		(controller $Repeat renderer='EntityStateRepeatItem'
+			(bind count "entityStates ? entityStates.items.length : 0" watch=false (event "entityStates.evAdded"))
+			(bindcall removeChildAt "$event[1]" (event "entityStates.evRemoved"))
+			(args "entityStates" "_markerEntity")
+		)
+
+		# ---- added ----
+		# Both icons live inside this, and therefore inside the stock hblock, so they sit in
+		# the marker's status-icon row side by side and share its vertical alignment.
+		(element BowOvermatchItem _markerEntity="_markerEntity")
+	)
+)
+
+
+# All of this mod's logic. Kept out of EntityStatesItem so the stock body stays a clean copy,
+# which makes a future merge with another mod that wants the same hook straightforward.
+(def element BowOvermatchItem (_markerEntity:gfx) layout=true
+	# Populates CC.mods_ShipParamsInBattle for every ship in the battle. Without this the TTX
+	# collection stays empty and the incoming-threat direction never fires. Same call and same
+	# placement as mods/speed_indicator.unbound, which is known to work on this build.
+	#
+	# Fired per marker rather than once, because this mod owns no single-instance element and
+	# adding one would mean patching battle_elements.xml. speed_indicator does the same from
+	# TargetLockItem, so per-marker firing is evidently tolerated.
+	(bindcall externalCall 'inputMapping.onAction' "['createParamsForAllShipsInBattle', {}]" on='addedToStage')
+
+	(scope
+		(macro GET_MARKER_ENTITY_COMPONENT 'avatar')
+		(macro GET_MARKER_ENTITY_COMPONENT 'relation')
+
+		(var relationValue:number = "relationComponent ? relationComponent.value : -1" (event "relationComponent.evChanged"))
+		(var isEnemy:bool = "relationValue == SC.Battle.PLAYER_RELATION.ENEMY")
+
+		(var isAlive:bool = "_markerEntity && _markerEntity.hasComponent(CC.health) ? _markerEntity.health.isAlive : true" (event "_markerEntity.health.evIsAliveChanged"))
+
+		# Target identity. nameIDS is 'IDS_' + the ship index, e.g. IDS_PJSB018, and the
+		# generated table is keyed on that full string because unbound2 has no way to slice
+		# the prefix off.
+		(var shipRef:gfx = "avatarComponent ? avatarComponent.ship.ref.ship : null")
+		(var shipKey:str = "shipRef ? shipRef.nameIDS : ''")
+		(var bowArmour:number = "shipKey in BOW_ARMOUR ? BOW_ARMOUR[shipKey] : 0")
+
+		# Destroyers and submarines are excluded by design.
+		#
+		# This is load-bearing, not cosmetic: the table holds 208 destroyer rows at 6, 10, 16
+		# and 19 mm, and any gun of 272 mm or larger overmatches 19 mm. Without this filter
+		# almost every battleship would show the icon on almost every destroyer, which is both
+		# noise and useless - overmatching a destroyer bow is not a decision anyone needs help
+		# with.
+		#
+		# ShipTypes is the client's own classification (pc/shared/constants.unbound:272), so
+		# this stays correct for ships added in future patches without touching the table.
+		# Submarines currently have no table rows at all, so for them this is belt and braces.
+		(var shipType:str = "shipRef ? shipRef.subtype : ''")
+		(var isExcludedType:bool = "shipType == ShipTypes.DESTROYER || shipType == ShipTypes.SUBMARINE")
+
+		# Own shell, published by Main.py. Watcher pattern copied from
+		# PnFMods/PenetrationCalculator.unbound:68-72, which is known good on this build.
+		(var omWatcher:gfx = "$datahub.getPrimWatcher(CC.mods_DataComponent, BOWOM_COMPONENT_KEY)")
+		(var omEntity:gfx = "omWatcher.entity" (event "omWatcher.event"))
+		(var omComponent:gfx = "omEntity ? omEntity.mods_DataComponent : null")
+		(var omData:dict = "omComponent ? omComponent.data : {}" (event "omComponent.evDataChanged"))
+		(var overmatchMm:number = "'overmatchMm' in omData ? omData.overmatchMm : 0")
+
+		# bowArmour == 0 means the ship is not in the table, so render nothing rather than
+		# guess. Same for overmatchMm == 0, which means Main.py has not managed to read the
+		# player's calibre yet.
+		#
+		# Deliberately independent of which shell is loaded. Both directions of this mod report
+		# what a main battery can do, not what is in the breech, so switching to HE or SAP
+		# leaves both icons alone. Read an amber icon as "your guns can overmatch that bow",
+		# not "this salvo will".
+		(var willOvermatch:bool = "isEnemy && isAlive && !isExcludedType && bowArmour > 0 && overmatchMm > 0 && overmatchMm >= bowArmour")
+
+		# ------------------------------------------------------------------------------
+		# Incoming direction: can this enemy's main battery overmatch MY bow?
+		# ------------------------------------------------------------------------------
+
+		# Own ship. Same path the client's own battle UI uses for the player's ship, see
+		# pc/battle/central_dangers.unbound:16-17 and pc/battle/main_hud.unbound:7-10.
+		(var selfAvatarEntity:gfx = "$datahub.getSingleEntity(CC.playerAvatar)")
+		(var selfShipRef:gfx = "selfAvatarEntity && selfAvatarEntity.avatar ? selfAvatarEntity.avatar.ship.ref.ship : null")
+		(var selfShipKey:str = "selfShipRef ? selfShipRef.nameIDS : ''")
+		(var selfBowArmour:number = "selfShipKey in BOW_ARMOUR ? BOW_ARMOUR[selfShipKey] : 0")
+
+		# Suppressed entirely when the player is in a destroyer or submarine. A 19 mm destroyer
+		# bow is overmatched by anything 272 mm or larger, so the icon would sit on every
+		# battleship and heavy cruiser permanently and tell you nothing you can act on.
+		(var selfShipType:str = "selfShipRef ? selfShipRef.subtype : ''")
+		(var selfIsExcluded:bool = "selfShipType == ShipTypes.DESTROYER || selfShipType == ShipTypes.SUBMARINE")
+
+		# Enemy main battery calibre, live from the client's battle-mods TTX component
+		# (Components.xml:6359, marked "DO NOT REMOVE!!!!!! this component for battle mods").
+		# caliber.value is already in millimetres.
+		#
+		# mainGun is an array of gun configs. Taking [0] is correct here because every ship in
+		# the game has a single main battery calibre; the client's own port code takes [0] the
+		# same way, at pc/ttx/modules/module_artillery_params.unbound:22.
+		(var ttxCollection:gfx = "$datahub.getCollection(CC.mods_ShipParamsInBattle)")
+		(var ttxEntity:gfx = "avatarComponent ? $datahub.getPrimaryEntity(CC.mods_ShipParamsInBattle, avatarComponent.id) : null" (event "ttxCollection.evAdded") (event "ttxCollection.evRemoved"))
+		(var enemyTTX:gfx = "ttxEntity ? ttxEntity.mods_ShipParamsInBattle.shipTTX : null")
+		(var enemyArtillery:gfx = "enemyTTX ? enemyTTX.artillery : null")
+		(var enemyMainGun:gfx = "enemyArtillery && enemyArtillery.mainGun && enemyArtillery.mainGun.length > 0 ? enemyArtillery.mainGun[0] : null")
+		(var enemyCalibre:number = "enemyMainGun && enemyMainGun.caliber ? enemyMainGun.caliber.value : 0")
+		(var enemyOvermatchMm:number = "enemyCalibre > 0 ? floor(enemyCalibre / BOWOM_RATIO) : 0")
+
+		# Deliberately does NOT check whether the enemy carries AP. That was a considered
+		# choice: the warning is about what their calibre can do, not what they happen to have
+		# loaded. To restrict it to ships that actually have AP shells, add
+		# "&& enemyArtillery.ammoAP" below.
+		#
+		# Destroyers are deliberately NOT excluded as attackers. At low tiers they genuinely
+		# do overmatch: 18 tier 2-3 cruisers in the table have 6 mm bow plating, and 6 mm is
+		# overmatched by anything above 86 mm, which every destroyer gun clears. Excluding
+		# them would hide a real threat. From roughly tier 5 up the arithmetic excludes them
+		# on its own. Submarines never flag - no main battery, so enemyCalibre stays 0.
+		(var threatensMe:bool = "isEnemy && !selfIsExcluded && selfBowArmour > 0 && enemyOvermatchMm > 0 && enemyOvermatchMm >= selfBowArmour")
+
+		(var debugText:str = "toString(overmatchMm) + '/' + toString(bowArmour) + ' v ' + toString(enemyOvermatchMm) + '/' + toString(selfBowArmour)")
+	)
+
+	# $Instance rather than (bind visible ...) so the icon takes no layout space when the
+	# player cannot overmatch. A hidden block would leave a permanent gap on every marker.
+	(controller $Instance renderer='BowOvermatchIcon'
+		(bind enabled "willOvermatch")
+	)
+
+	(controller $Instance renderer='BowOvermatchThreatIcon'
+		(bind enabled "threatensMe")
+	)
+
+	# Shows "<my threshold>/<their bow> v <their threshold>/<my bow>". Both directions, so a
+	# missing icon can always be traced to the numbers behind it.
+	(controller $Instance renderer='BowOvermatchDebugText'
+		(bind enabled "BOWOM_DEBUG_TEXT && isEnemy")
+		(args _text="debugText")
+	)
+)
+
+
+# The url: path is resolved relative to this file's own directory, so ../../../ lands on
+# res_mods/. Same form as PnFMods/PenetrationCalculator.unbound:235, which resolves
+# res_mods/PnFMods/PenetrationCalculatorPy/*.png from this same directory.
+(def element BowOvermatchIcon () layout=true
+	(style
+		(width = "BOWOM_ICON_SIZE") (height = "BOWOM_ICON_SIZE")
+		(backgroundImage = 'url:../../../PnFMods/BowOvermatch/icon_overmatch.png')
+		(backgroundSize = "fill")
+		(marginLeft = 2)
+	)
+)
+
+
+# Sits immediately after the overmatch icon in the same row, same size, no absolute
+# positioning. An earlier version placed this on the opposite side of the marker with a
+# negative absolute offset; the two icons read as unrelated at that distance.
+(def element BowOvermatchThreatIcon () layout=true
+	(style
+		(width = "BOWOM_ICON_SIZE") (height = "BOWOM_ICON_SIZE")
+		(backgroundImage = 'url:../../../PnFMods/BowOvermatch/icon_threat.png')
+		(backgroundSize = "fill")
+		(marginLeft = 2)
+	)
+)
+
+
+(def element BowOvermatchDebugText (_text:str) layout=true
+	(element SimpleMarkerTextItem _value="_text" _noTranslate=true)
+)
