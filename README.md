@@ -345,6 +345,3 @@ If you care about the answer, ask in the official Wargaming mods Discord before 
   wiring.
 - [Wargaming Mods API documentation](https://github.com/wgmods/Mods-API-Documentation).
 
-## Licence
-
-<!-- TODO: choose a licence before publishing. MIT is the usual choice for game mods. -->
