@@ -341,10 +341,6 @@ If you care about the answer, ask in the official Wargaming mods Discord before 
 
 ## Credits
 
-- Bow armour values come from a community-maintained `DataEnum.py` armour dataset.
-  <!-- TODO: add attribution and a link for the armour dataset before publishing. -->
-- `PnFMods/PenetrationCalculator` was the reference for the Mods API patterns used here: the
-  `mods_DataComponent` datahub watcher, the `url:` asset path form, and the shell-change event
-  wiring.
+- Bow armour values come from [this](https://github.com/17900Shimakaze/ArmorInfo/blob/main/PnFMods/ArmorInfo/DataEnum.py) armour dataset.
 - [Wargaming Mods API documentation](https://github.com/wgmods/Mods-API-Documentation).
 
