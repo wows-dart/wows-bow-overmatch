@@ -234,7 +234,27 @@ res_mods/
 
 ## Updating the armour table
 
-`BowOvermatchTable.unbound` holds **844 ships**:
+`BowOvermatchTable.unbound` holds **1100 rows**: 844 ships with a real bow plating value, and
+256 placeholders awaiting one.
+
+A row with a value of `-1` means "this ship exists, but nobody has looked its armour up yet".
+The mod treats any value of zero or less as unknown, so a `-1` row renders the grey question
+mark exactly as an absent row would — the point is that the gap is visible and editable in one
+place instead of being invisible.
+
+**To fill one in**, find it in the block at the end of the file and replace the `-1` with the
+bow plating in millimetres:
+
+```
+	'IDS_PASB801': -1,	# South Carolina      before
+	'IDS_PASB801': 16,	# South Carolina      after
+```
+
+The 256 placeholders are battleships, cruisers, carriers and auxiliary/scenario ships. Rows for
+destroyers and submarines are deliberately absent: the mod never consults their armour, so
+filling those in would be wasted effort.
+
+The 844 real values break down as:
 
 | Bow plating | Ships | | Bow plating | Ships |
 |---|---|---|---|---|
@@ -244,11 +264,11 @@ res_mods/
 | 16 mm | 156 | | 27 mm | 50 |
 | 19 mm | 189 | | 32 mm | 139 |
 
-When a new ship is released it will show the grey question mark until the table gains a row.
-Adding one by hand is a single line:
+A ship released after this table was built will not be in it at all, not even as a `-1`, and
+shows the question mark. Adding it is the same single line:
 
 ```
-	'IDS_PJSB018': 32,	# Yamato (EnumX)
+	'IDS_PJSB018': 32,	# Yamato
 ```
 
 The key is `IDS_` followed by the ship's index — the internal identifier, not its display name.
@@ -271,10 +291,11 @@ Three constraints when editing the file:
 
 Opening an issue with the ship name and its bow plating is just as welcome.
 
-Ships missing from the table show the grey question mark rather than nothing. A silent absence
+Ships with no armour value show the grey question mark rather than nothing. A silent absence
 would be indistinguishable from "no, you cannot overmatch that bow", which is a different and
-misleading answer. So if you see question marks, that ship needs a table row — and it is worth
-opening an issue so the dataset gets it.
+misleading answer. So a question mark means that ship needs a value — either a `-1` row waiting
+to be filled in, or a ship too new to be in the file at all. Pull requests and issues both
+welcome.
 
 ## Known limitations
 
