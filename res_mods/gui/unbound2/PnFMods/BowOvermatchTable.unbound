@@ -909,9 +909,9 @@
 	'IDS_PBSA910': -1,	# [Audacious]
 	'IDS_PBSB727': -1,	# Duke of Bronte
 	'IDS_PBSB810': -1,	# Cumberland
-	'IDS_PBSB910': -1,	# [Conqueror]
-	'IDS_PBSB911': -1,	# Conqueror
-	'IDS_PBSB920': -1,	# Conqueror CLR
+	'IDS_PBSB910': 32,	# [Conqueror]
+	'IDS_PBSB911': 32,	# Conqueror
+	'IDS_PBSB920': 32,	# Conqueror CLR
 	'IDS_PBSB998': -1,	# St. Lawrence
 	'IDS_PBSC101': -1,	# Black Swan
 	'IDS_PBSC102': -1,	# Weymouth
@@ -921,15 +921,15 @@
 	'IDS_PFSB909': -1,	# Dark Corsair
 	'IDS_PFSC101': -1,	# Bougainville
 	'IDS_PFSC102': -1,	# Jurien
-	'IDS_PFSC518': -1,	# Jean Bart
-	'IDS_PFSC720': -1,	# Latouche-Treville
-	'IDS_PFSC810': -1,	# Brennus
+	'IDS_PFSC518': 32,	# Jean Bart
+	'IDS_PFSC720': 25,	# Latouche-Treville
+	'IDS_PFSC810': 25,	# Brennus
 	'IDS_PFSC896': -1,	# [La Galissonniere]
 	'IDS_PGSA508': -1,	# Graf Zeppelin (old)
 	'IDS_PGSA510': -1,	# W. Voss
 	'IDS_PGSA990': -1,	# O. Lilienthal
-	'IDS_PGSB001': -1,	# Bismarck
-	'IDS_PGSB719': -1,	# Friedrich Carl
+	'IDS_PGSB001': 32,	# Bismarck
+	'IDS_PGSB719': 32,	# Friedrich Carl
 	'IDS_PGSB828': -1,	# Odin TE
 	'IDS_PGSB910': -1,	# [G. Kurfurst]
 	'IDS_PGSB918': -1,	# Sea Howl
@@ -982,7 +982,7 @@
 	'IDS_PJSC006': -1,	# Furutaka
 	'IDS_PJSC014': -1,	# Kitakami
 	'IDS_PJSC021': -1,	# Kurama
-	'IDS_PJSC035': -1,	# Chikuma
+	'IDS_PJSC035': 25,	# Chikuma
 	'IDS_PJSC037': -1,	# Hashidate
 	'IDS_PJSC705': -1,	# ARP Myoko
 	'IDS_PJSC709': -1,	# ARP Haguro
@@ -1000,8 +1000,8 @@
 	'IDS_PJSX799': -1,	# 707R
 	'IDS_PRSA990': -1,	# Orlov
 	'IDS_PRSB538': -1,	# V. I. Lenin
-	'IDS_PRSB729': -1,	# Respublika
-	'IDS_PRSB739': -1,	# Sov. Rossiya
+	'IDS_PRSB729': 32,	# Respublika
+	'IDS_PRSB739': 32,	# Sov. Rossiya
 	'IDS_PRSB818': -1,	# Borodino TE
 	'IDS_PRSC002': -1,	# Diana
 	'IDS_PRSC010': -1,	# Diana L
@@ -1010,13 +1010,13 @@
 	'IDS_PRSC105': -1,	# Kirov (OLD)
 	'IDS_PRSC520': -1,	# STALINGRAD #2
 	'IDS_PRSC548': -1,	# Bagration
-	'IDS_PRSC818': -1,	# Kiberpankov
+	'IDS_PRSC818': 25,	# Kiberpankov
 	'IDS_PRSC910': -1,	# [Moskva]
 	'IDS_PRSC980': -1,	# V. Monomakh
 	'IDS_PRSC990': -1,	# Petrozavodsk
 	'IDS_PRSC999': -1,	# Test Ship
 	'IDS_PRSX799': -1,	# B-4
-	'IDS_PSSB709': -1,	# Triunfante
+	'IDS_PSSB709': 32,	# Triunfante
 	'IDS_PSSC101': -1,	# Jupiter
 	'IDS_PSSC102': -1,	# Mendez Nunez
 	'IDS_PUSC001': -1,	# Sutlej
