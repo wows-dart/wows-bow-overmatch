@@ -346,19 +346,22 @@ prohibits modifications that "make otherwise unknown information available, exce
 mentioned and approved on the official portal", and separately anything that helps a player
 "aim in any way that is not already available in the game".
 
-Enemy bow armour thickness is not displayed anywhere in the standard client. That places this
-mod in a grey area, and I cannot tell you which side of the line Wargaming would put it on. Two
-things are worth weighing:
+### THIS MOD WAS NOT APPROVED BY WG - PLEASE DONT USE IT!
 
-- Wargaming added `getBulletKrupp`, `getAmmoImpactSpeed`, `getSelfHoopRanging` and
-  `getAmmoModifiers` to the official API specifically so mods can display the player's *own*
-  penetration figures, and exposed no enemy armour data at all. The asymmetry is suggestive.
-- The enemy calibre half of this mod uses `Mods_ShipParamsInBattle`, a component the client
-  declares with the comment `<!-- DO NOT REMOVE!!!!!! this component for battle mods -->`, so
-  that data is clearly intended to be available to mods.
+Response from WG:
+```
+Thank you for submitting your mod.
 
-Enforcement for prohibited mods is a three-strike ladder ending in permanent account suspension.
-If you care about the answer, ask in the official Wargaming mods Discord before using this.
+Your "Bow Overmatch" mod has been denied for approval.
+
+Understanding when your ship can overmatch an enemy ship, or when an enemy ship can overmatch yours, is part of the game knowledge and skill players develop over time.
+
+This requires players to understand their own gun caliber and overmatch capabilities, as well as the armor characteristics and vulnerable areas of the ship they are facing.
+
+Displaying a static overmatch value based on the player's gun caliber would be acceptable. However, automatically comparing this information against the current target and displaying an indicator showing whether you can overmatch them, or whether they can overmatch you, is not acceptable. This effectively performs part of the gameplay assessment for the player and provides information that would otherwise require game knowledge.
+
+For this reason, we consider this functionality to provide an unfair advantage and cannot approve the mod in its current form.
+```
 
 ## Credits
 
